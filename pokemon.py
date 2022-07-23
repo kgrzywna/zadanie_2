@@ -1,9 +1,15 @@
+from urllib.error import HTTPError
 import requests, argparse
 from functools import reduce
 
 
-def make_requests(data: list):
+def make_requests(data: list) -> list:
+    result = []
+
     for item in data:
+        if type(item) != dict:
+            raise ValueError
+        
         for key, value in item.items():
             response = requests.get(
                 "https://pokeapi.co/api/v2/type/" + key
@@ -24,19 +30,25 @@ def make_requests(data: list):
                             damage.append(0)
                 
                 if not damage:
-                    print("1x")
+                    result.append("1x")
                 else:
                     multiplier = reduce((lambda x, y: x * y), damage)
-                    print(str(multiplier) + "x")
+                    result.append(str(multiplier) + "x")
             else:
-                print("Status code: ", response.status_code)
+                raise Exception("err", response.status_code)
+        
+    return result
 
 
-def parse_data(path: str) -> list:
+def read_data(path: str) -> str:
     with open(path, 'r') as file:
         content = file.read().split('\n')
         content = list(filter(None, content))
 
+    return content
+
+
+def parse_data(content: str) -> list:
     if not content:
         raise ValueError
 
@@ -69,13 +81,16 @@ def manage_args():
     path = args.p
     
     try:
-        data = parse_data(path)
+        data = read_data(path)
+        data = parse_data(data)
         if not data:
             print("Empty data")
-        make_requests(data)
+        res = make_requests(data)
+        for item in res:
+            print(item)
     except FileNotFoundError:
         print("File not found")
     except ValueError:
         print("Incorrect data value")
-
-manage_args()
+    except Exception as e:
+        print("Status code: ", e.args[1])
